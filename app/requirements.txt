@@ -1,4 +1,0 @@
-# app/requirements.txt
-fastapi
-uvicorn
-joblib

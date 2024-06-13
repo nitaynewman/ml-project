@@ -2,32 +2,29 @@
 import os
 import subprocess
 
-def deploy(model_dir, namespace, cpu, memory, route):
-    image_name = "sugar-model"
-    image_tag = "latest"
-    full_image_name = f"{os.getenv('DOCKER_HUB_USERNAME')}/{image_name}:{image_tag}"
+def deploy(model_dir, namespace, cpu, memory, route_url):
+    # build docker
+    subprocess.run(["docker", "build", "-t", "ml-model:latest", "."], check=True)
+    print("finish build")
 
-    # Build Docker image
-    subprocess.run(["docker", "build", "-t", full_image_name, "."], check=True)
 
-    # Push Docker image
-    subprocess.run(["docker", "push", full_image_name], check=True)
+    # Push Docker
+    subprocess.run(["docker", "tag", "ml-model:latest", f"{route_url}/ml-model:latest"], check=True)
+    subprocess.run(["docker", "push", f"{route_url}/ml-model:latest"], check=True)
+    print("pushed")
 
-    # Login to OpenShift
-    subprocess.run(["oc", "login", "--token=<your-token>", "--server=<your-server>"], check=True)
 
-    # Create new project/namespace
-    subprocess.run(["oc", "new-project", namespace], check=True)
 
-    # Create deployment
-    subprocess.run(["oc", "new-app", full_image_name, "--name=sugar-model", "-n", namespace], check=True)
+    # os config
+    subprocess.run(["oc", "apply", "-f", "deployment.yaml"], check=True)
+    subprocess.run(["oc", "apply", "-f", "service.yaml"], check=True)
+    subprocess.run(["oc", "apply", "-f", "route.yaml"], check=True)
 
-    # Set resources
-    subprocess.run(["oc", "set", "resources", "deployment", "sugar-model", "--limits", f"cpu={cpu},memory={memory}", "-n", namespace], check=True)
+    print("deployment complete.👍")
 
-    # Expose the service
-    subprocess.run(["oc", "expose", "svc/sugar-model", "--hostname", route, "-n", namespace], check=True)
+# deploy(model_dir="path/to/model", namespace="namespace", cpu="500m", memory="128Mi", route_url="route-url")
 
-# Example usage
-if __name__ == "__main__":
-    deploy(model_dir="model", namespace="sugar-namespace", cpu="500m", memory="512Mi", route="sugar-model-route")
+
+'''
+- need to have logged in before to push
+'''
